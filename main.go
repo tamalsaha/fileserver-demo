@@ -29,8 +29,10 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 
-	r.Options("/", fileServer.ServeHTTP)
-	r.Get("/", fileServer.ServeHTTP)
+	r.Options("/*", fileServer.ServeHTTP)
+	r.Get("/*", fileServer.ServeHTTP)
+
+	// http.Handle("/", fileServer)
 
 	log.Printf("Serving %s on HTTP port: %s\n", *directory, *port)
 	log.Fatal(http.ListenAndServe(":"+*port, r))
