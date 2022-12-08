@@ -28,7 +28,7 @@ func main() {
 	dir := flag.String("d", "files", "the directory of static file to host")
 	flag.Parse()
 
-	_ = os.MkdirAll(*dir, 0755)
+	_ = os.MkdirAll(*dir, 0o755)
 
 	fileServer := http.FileServer(http.Dir(*dir))
 
