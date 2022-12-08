@@ -41,6 +41,7 @@ func main() {
 	flag.Parse()
 
 	prefix := "files" // where files are stored
+	prefix = path.Join("/", prefix)
 
 	_ = os.MkdirAll(*dir, 0o755)
 	fileServer := http.FileServer(http.Dir(*dir))
@@ -75,7 +76,7 @@ func main() {
 	log.Fatal(http.ListenAndServe(":"+*port, r))
 }
 
-const MaxUploadSize = 10 << 20 // 100 MB
+const MaxUploadSize = 100 << 20 // 100 MB
 
 // FileSave fetches the file and saves to disk
 func FileSave(prefix, dir string, r *http.Request) error {
