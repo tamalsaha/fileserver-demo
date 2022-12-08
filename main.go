@@ -14,6 +14,9 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
+	"github.com/dustin/go-humanize"
+	_ "github.com/dustin/go-humanize"
 	"io"
 	"log"
 	"net/http"
@@ -57,17 +60,8 @@ func main() {
 			w.WriteHeader(code)
 			return
 		}
-
-		data, _ := json.Marshal(status)
-		w.Write(data)
-		//return code
-		//
-		//http.toap
-		//if err != nil {
-		//	http.Error(w, err.Error(), http.StatusInternalServerError)
-		//	return
-		//}
-		//w.Write([]byte("Upload successful!"))
+		data, _ := json.MarshalIndent(status, "", "  ")
+		_, _ = w.Write(data)
 	})
 
 	// http.Handle("/", fileServer)
@@ -76,7 +70,7 @@ func main() {
 	log.Fatal(http.ListenAndServe(":"+*port, r))
 }
 
-const MaxUploadSize = 100 << 20 // 100 MB
+const MaxUploadSize = 10 << 20 // 100 MB
 
 // FileSave fetches the file and saves to disk
 func FileSave(dir string, r *http.Request) error {
@@ -105,7 +99,7 @@ func FileSave(dir string, r *http.Request) error {
 		// logger.WithField("size", size).Info("file size exceeded")
 		// w.WriteHeader(http.StatusRequestEntityTooLarge)
 		// writeError(w, errors.New("uploaded file size exceeds the limit"))
-		return apierrors.NewRequestEntityTooLargeError("uploaded file size exceeds the limit")
+		return apierrors.NewRequestEntityTooLargeError(fmt.Sprintf("received %s, limit %s", humanize.Bytes(uint64(size)), humanize.Bytes(MaxUploadSize)))
 	}
 
 	filename := h.Filename
