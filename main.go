@@ -50,6 +50,8 @@ func main() {
 	log.Fatal(http.ListenAndServe(":"+*port, r))
 }
 
+const MaxUploadSize = 100 << 20 // 100 MB
+
 // FileSave fetches the file and saves to disk
 func FileSave(r *http.Request) (string, error) {
 	// left shift 100 << 20 which results in 32*2^20 = 33554432
@@ -65,6 +67,20 @@ func FileSave(r *http.Request) (string, error) {
 		return "", err
 	}
 	defer f.Close()
+
+	size, err := getSize(f)
+	if err != nil {
+		//// logger.WithError(err).Error("failed to get the size of the uploaded content")
+		//w.WriteHeader(http.StatusInternalServerError)
+		//writeError(w, err)
+		return "", err
+	}
+	if size > MaxUploadSize {
+		// logger.WithField("size", size).Info("file size exceeded")
+		// w.WriteHeader(http.StatusRequestEntityTooLarge)
+		// writeError(w, errors.New("uploaded file size exceeds the limit"))
+		return "", errors.New("uploaded file size exceeds the limit")
+	}
 
 	filename := h.Filename
 	if filename == "" {
@@ -85,4 +101,16 @@ func FileSave(r *http.Request) (string, error) {
 		return "", err
 	}
 	return fullPath, nil
+}
+
+func getSize(content io.Seeker) (int64, error) {
+	size, err := content.Seek(0, io.SeekEnd)
+	if err != nil {
+		return 0, err
+	}
+	_, err = content.Seek(0, io.SeekStart)
+	if err != nil {
+		return 0, err
+	}
+	return size, nil
 }
