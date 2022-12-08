@@ -25,10 +25,12 @@ import (
 
 func main() {
 	port := flag.String("p", "8100", "port to serve on")
-	directory := flag.String("d", ".", "the directory of static file to host")
+	dir := flag.String("d", "files", "the directory of static file to host")
 	flag.Parse()
 
-	fileServer := http.FileServer(http.Dir(*directory))
+	_ = os.MkdirAll(*dir, 0755)
+
+	fileServer := http.FileServer(http.Dir(*dir))
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -46,14 +48,14 @@ func main() {
 
 	// http.Handle("/", fileServer)
 
-	log.Printf("Serving %s on HTTP port: %s\n", *directory, *port)
+	log.Printf("Serving %s on HTTP port: %s\n", *dir, *port)
 	log.Fatal(http.ListenAndServe(":"+*port, r))
 }
 
 const MaxUploadSize = 100 << 20 // 100 MB
 
 // FileSave fetches the file and saves to disk
-func FileSave(r *http.Request) (string, error) {
+func FileSave(dir string, r *http.Request) (string, error) {
 	// left shift 100 << 20 which results in 32*2^20 = 33554432
 	// x << y, results in x*2^y
 	// 1 MB max memory
@@ -87,8 +89,7 @@ func FileSave(r *http.Request) (string, error) {
 		return "", errors.New("missing file name")
 	}
 
-	path := filepath.Join(".", "files")
-	fullPath := filepath.Join(path, r.URL.Path, filename)
+	fullPath := filepath.Join(dir, r.URL.Path, filename)
 	_ = os.MkdirAll(filepath.Dir(fullPath), os.ModePerm)
 	file, err := os.OpenFile(fullPath, os.O_WRONLY|os.O_CREATE, os.ModePerm)
 	if err != nil {
