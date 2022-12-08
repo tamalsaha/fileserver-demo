@@ -25,14 +25,11 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize"
-	_ "github.com/dustin/go-humanize"
-
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	hw "go.wandrs.dev/http"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 )
 
 func main() {
@@ -41,7 +38,12 @@ func main() {
 	flag.Parse()
 
 	prefix := "files" // where files are stored
-	prefix = path.Join("/", prefix)
+	if !strings.HasPrefix(prefix, "/") {
+		prefix = "/" + prefix
+	}
+	if !strings.HasSuffix(prefix, "/") {
+		prefix = prefix + "/"
+	}
 
 	_ = os.MkdirAll(*dir, 0o755)
 	fileServer := http.FileServer(http.Dir(*dir))
@@ -50,8 +52,10 @@ func main() {
 	r.Use(middleware.Logger)
 
 	pattern := path.Join(prefix, "*")
-	r.Options(pattern, fileServer.ServeHTTP)
-	r.Get(pattern, fileServer.ServeHTTP)
+
+	// http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+	r.Options(pattern, http.StripPrefix(prefix, fileServer).ServeHTTP)
+	r.Get(pattern, http.StripPrefix(prefix, fileServer).ServeHTTP)
 	r.Post(pattern, func(w http.ResponseWriter, r *http.Request) {
 		err := FileSave(prefix, *dir, r)
 
