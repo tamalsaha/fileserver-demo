@@ -14,6 +14,9 @@ import (
 	"flag"
 	"log"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 func main() {
@@ -21,8 +24,14 @@ func main() {
 	directory := flag.String("d", ".", "the directory of static file to host")
 	flag.Parse()
 
-	http.Handle("/", http.FileServer(http.Dir(*directory)))
+	fileServer := http.FileServer(http.Dir(*directory))
+
+	r := chi.NewRouter()
+	r.Use(middleware.Logger)
+
+	r.Options("/", fileServer.ServeHTTP)
+	r.Get("/", fileServer.ServeHTTP)
 
 	log.Printf("Serving %s on HTTP port: %s\n", *directory, *port)
-	log.Fatal(http.ListenAndServe(":"+*port, nil))
+	log.Fatal(http.ListenAndServe(":"+*port, r))
 }
