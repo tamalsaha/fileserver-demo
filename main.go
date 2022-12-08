@@ -88,8 +88,8 @@ func FileSave(r *http.Request) (string, error) {
 	}
 
 	path := filepath.Join(".", "files")
-	_ = os.MkdirAll(path, os.ModePerm)
-	fullPath := path + "/" + filename
+	fullPath := filepath.Join(path, r.URL.Path, filename)
+	_ = os.MkdirAll(filepath.Dir(fullPath), os.ModePerm)
 	file, err := os.OpenFile(fullPath, os.O_WRONLY|os.O_CREATE, os.ModePerm)
 	if err != nil {
 		return "", err
