@@ -15,14 +15,17 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/dustin/go-humanize"
-	_ "github.com/dustin/go-humanize"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
+	"strings"
+
+	"github.com/dustin/go-humanize"
+	_ "github.com/dustin/go-humanize"
 
 	hw "go.wandrs.dev/http"
 
@@ -37,17 +40,19 @@ func main() {
 	dir := flag.String("d", "files", "the directory of static file to host")
 	flag.Parse()
 
-	_ = os.MkdirAll(*dir, 0o755)
+	prefix := "files" // where files are stored
 
+	_ = os.MkdirAll(*dir, 0o755)
 	fileServer := http.FileServer(http.Dir(*dir))
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 
-	r.Options("/*", fileServer.ServeHTTP)
-	r.Get("/*", fileServer.ServeHTTP)
-	r.Post("/*", func(w http.ResponseWriter, r *http.Request) {
-		err := FileSave(*dir, r)
+	pattern := path.Join(prefix, "*")
+	r.Options(pattern, fileServer.ServeHTTP)
+	r.Get(pattern, fileServer.ServeHTTP)
+	r.Post(pattern, func(w http.ResponseWriter, r *http.Request) {
+		err := FileSave(prefix, *dir, r)
 
 		status := hw.ErrorToAPIStatus(err)
 		code := int(status.Code)
@@ -73,7 +78,7 @@ func main() {
 const MaxUploadSize = 10 << 20 // 100 MB
 
 // FileSave fetches the file and saves to disk
-func FileSave(dir string, r *http.Request) error {
+func FileSave(prefix, dir string, r *http.Request) error {
 	// left shift 100 << 20 which results in 32*2^20 = 33554432
 	// x << y, results in x*2^y
 	// 1 MB max memory
@@ -107,9 +112,9 @@ func FileSave(dir string, r *http.Request) error {
 		return errors.New("missing file name")
 	}
 
-	fullPath := filepath.Join(dir, r.URL.Path, filename)
-	_ = os.MkdirAll(filepath.Dir(fullPath), os.ModePerm)
-	file, err := os.OpenFile(fullPath, os.O_WRONLY|os.O_CREATE, os.ModePerm)
+	fullPath := filepath.Join(dir, strings.TrimPrefix(r.URL.Path, prefix), filename)
+	_ = os.MkdirAll(filepath.Dir(fullPath), 0o755)
+	file, err := os.OpenFile(fullPath, os.O_WRONLY|os.O_CREATE, 0o644)
 	if err != nil {
 		return err
 	}
